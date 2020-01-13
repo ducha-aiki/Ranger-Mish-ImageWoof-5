@@ -10,9 +10,8 @@ import torch.utils.model_zoo as model_zoo
 from functools import partial
 #from ...torch_core import Module
 from fastai.torch_core import Module
-
 import torch.nn.functional as F  #(uncomment if needed,but you likely already have it)
-
+import kornia
 
 class Mish(nn.Module):
     def __init__(self):
@@ -119,7 +118,7 @@ class ResBlock(Module):
         self.convs = nn.Sequential(*layers)
         # TODO: check whether act=True works better
         self.idconv = noop if ni==nf else conv_layer(ni, nf, 1, act=False)
-        self.pool = noop if stride==1 else nn.AvgPool2d(2, ceil_mode=True)
+        self.pool = noop if stride==1 else kornia.contrib.MaxBlurPool2d(3, True)#nn.AvgPool2d(2, ceil_mode=True)
 
     def forward(self, x): return act_fn(self.sa(self.convs(x)) + self.idconv(self.pool(x)))
 
@@ -140,7 +139,7 @@ class MXResNet(nn.Sequential):
                   for i,l in enumerate(layers)]
         super().__init__(
             *stem,
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            kornia.contrib.MaxBlurPool2d(3, True),
             *blocks,
             nn.AdaptiveAvgPool2d(1), Flatten(),
             nn.Linear(block_szs[-1]*expansion, c_out),
